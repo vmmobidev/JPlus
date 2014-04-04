@@ -13,6 +13,18 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     // Override point for customization after application launch.
+    
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"7.0"))
+    {
+
+    }else
+    {
+        [[UINavigationBar appearance] setBackgroundImage:[[UIImage alloc] init] forBarMetrics:UIBarMetricsDefault];
+        [[UINavigationBar appearance] setBackgroundColor:[UIColor colorWithRed:.94 green:.64 blue:.78 alpha:1]];
+    }
+    
+    [MagicalRecord setupCoreDataStackWithStoreNamed:@"BeerModel"];
+
     return YES;
 }
 							
