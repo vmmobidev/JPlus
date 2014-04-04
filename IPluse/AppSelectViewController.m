@@ -136,6 +136,7 @@
     UIImageView *innerImageView = (UIImageView *)[cell viewWithTag:100];
     [innerImageView setImageWithURL:[NSURL URLWithString:iconUrlString] placeholderImage:nil];
     
+    
     UIImageView *outerImageView = (UIImageView *)[cell viewWithTag:101];
 
     if ([selectedCells containsObject:indexPath])
