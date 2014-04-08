@@ -14,6 +14,8 @@
 {
     // Override point for customization after application launch.
     
+
+    
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"7.0"))
     {
 
@@ -23,8 +25,8 @@
         [[UINavigationBar appearance] setBackgroundColor:[UIColor colorWithRed:.94 green:.64 blue:.78 alpha:1]];
     }
     
-    [MagicalRecord setupCoreDataStackWithStoreNamed:@"BeerModel"];
-
+    [MagicalRecord setupCoreDataStackWithStoreNamed:@"JPlusModel"];
+    
     return YES;
 }
 							
@@ -54,5 +56,6 @@
 {
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
+
 
 @end

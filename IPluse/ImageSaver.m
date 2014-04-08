@@ -10,20 +10,53 @@
 
 @implementation ImageSaver
 
-+ (NSString *)saveImageToDisk:(UIImage *)image forAppID:(NSString *)appID
++ (NSString *)saveImageToDisk:(UIImage *)image forAppID:(NSNumber *)appID
 {
     NSData *imgData   = UIImageJPEGRepresentation(image, 0.5);
-    NSString *name = [appID stringByAppendingString:@".jpg"];
+
+    NSString *imagePath = [ImageSaver imagePathForAppID:appID];
+    
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    if (![fileManager fileExistsAtPath:imagePath])
+    {
+        if ([imgData writeToFile:imagePath atomically:YES])
+        {
+            return imagePath;
+        }else
+        {
+            NSLog(@"Cannot save image");
+            return nil;
+        }
+    }else
+    {
+        return imagePath;
+    }
+}
+
+
++ (NSString *)imagePathForAppID:(NSNumber *)appID
+{
+    NSString *name = [[appID stringValue] stringByAppendingString:@".jpg"];
     NSArray *docArray = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *docPath = docArray[0];
     NSString *imagePath = [docPath stringByAppendingPathComponent:name];
     
-    if ([imgData writeToFile:imagePath atomically:YES])
+    return imagePath;
+}
+
++ (void)deleteImageAtPath:(NSString *)path
+{
+    NSError *error;
+    
+    [[NSFileManager defaultManager] removeItemAtPath:path error:&error];
+    
+    if ([[NSFileManager defaultManager] fileExistsAtPath:path])
     {
-        return imagePath;
+        NSLog(@"File is not deleted");
     }else
     {
-        return nil;
+        NSLog(@"FIle is deleted");
     }
 }
 

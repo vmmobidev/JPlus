@@ -30,14 +30,15 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-    
+    UIImageView *titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"logo.png"]];
+    self.navigationItem.titleView = titleView;
     NSLog(@"%@",self.nameFromLoginView);
-    if (!self.nameFromLoginView)
+    if (self.nameFromLoginView.length == 0)
     {
         self.nameLable.text = @"JUSTIN'S JPLUS BRACELET";
     }else
     {
-        NSString *nameString = [NSString stringWithFormat:@"%@'s JPLUS BRACELET",self.nameFromLoginView];
+        NSString *nameString = [NSString stringWithFormat:@"%@'S JPLUS BRACELET",[self.nameFromLoginView uppercaseString]];
         self.nameLable.text = nameString;
     }
 

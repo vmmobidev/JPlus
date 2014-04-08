@@ -21,18 +21,26 @@
     [super viewDidLoad];
 	// Do any additional setup after loading the view, typically from a nib.
     
-    
-    
-    self.navigationController.navigationBar.tintColor = [UIColor colorWithRed:.94 green:.64 blue:.78 alpha:1];
+    UIImageView *titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"logo.png"]];
+    self.navigationItem.titleView = titleView;
 
     if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"7.0"))
     {
         self.navigationController.navigationBar.barTintColor = [UIColor colorWithRed:.94 green:.64 blue:.78 alpha:1];
+        self.navigationController.navigationBar.tintColor = [UIColor whiteColor];
     }else
     {
         [[UINavigationBar appearance] setBackgroundImage:[[UIImage alloc] init] forBarMetrics:UIBarMetricsDefault];
         [[UINavigationBar appearance] setBackgroundColor:[UIColor colorWithRed:.94 green:.64 blue:.78 alpha:1]];
+        self.navigationController.navigationBar.tintColor = [UIColor colorWithRed:.94 green:.64 blue:.78 alpha:1];
+
     }
+    
+}
+- (IBAction)keyBoardResign:(id)sender
+{
+    [self.userName resignFirstResponder];
+    [self.password resignFirstResponder];
 }
 
 - (void)didReceiveMemoryWarning

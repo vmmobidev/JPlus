@@ -10,7 +10,9 @@
 
 @interface ImageSaver : NSObject
 
-+ (NSString *)saveImageToDisk:(UIImage *)image forAppID:(NSString *)appID;
++ (NSString *)saveImageToDisk:(UIImage *)image forAppID:(NSNumber *)appID;
 
++ (NSString *)imagePathForAppID:(NSNumber *)appID;
 
++ (void)deleteImageAtPath:(NSString *)path;
 @end

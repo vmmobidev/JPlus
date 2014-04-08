@@ -9,18 +9,22 @@
 #import "SelectiveViewController.h"
 #import <AddressBook/AddressBook.h> 
 #import "Person.h"
+#import "PersonSelected.h"
+#import "AppSelectViewController.h"
 #import <QuartzCore/QuartzCore.h>
 
 @interface SelectiveViewController ()
 //@property (weak, nonatomic) IBOutlet UISearchBar *contactSearchBar;
 //@property (strong, nonatomic)NSMutableArray *searchedContactsArray;
+@property (weak, nonatomic) IBOutlet UITextField *searchField;
+@property (weak, nonatomic) IBOutlet UIButton *okButton;
 
 @end
 
 @implementation SelectiveViewController
 {
     ABAddressBookRef addressBook;
-    NSMutableArray *selectedContacts;
+    NSMutableArray *selectedContacts, *personsToPass;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -37,11 +41,23 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
+    UIImageView *titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"logo.png"]];
+    self.navigationItem.titleView = titleView;
+    
     selectedContacts = [[NSMutableArray alloc] init];
+    personsToPass = [[NSMutableArray alloc] init];
+    
+    self.searchField.layer.cornerRadius = 5;
+    self.okButton.enabled = NO;
+
     
     self.tableData=[[NSMutableArray alloc] init];
     [self getAllContact];
     
+}
+- (IBAction)searchKeyResign:(UITextField *)sender
+{
+    [sender resignFirstResponder];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView
@@ -60,7 +76,6 @@
     {
         NSArray *topLevelObject = [[NSBundle mainBundle] loadNibNamed:@"SearchCell" owner:self options:nil];
         cell = topLevelObject[0];
-        
     }
     
     UIImageView *profileImageView = (UIImageView *)[cell viewWithTag:10];
@@ -122,12 +137,16 @@
         Person *person = [[Person alloc] init];
         
         ABRecordRef contactPerson = (__bridge ABRecordRef)allContacts[i];
+        person.uniqueID = ABRecordGetRecordID(contactPerson);
+        
         NSString *firstName = (__bridge_transfer NSString
                                *)ABRecordCopyValue(contactPerson, kABPersonFirstNameProperty);
         NSString *lastName =  (__bridge_transfer NSString
                                *)ABRecordCopyValue(contactPerson, kABPersonLastNameProperty);
-        NSString *fullName = [NSString stringWithFormat:@"%@ %@",
-                              firstName, lastName];
+        
+        firstName = firstName ? firstName:@"";
+        lastName = lastName? lastName: @"";
+        NSString *fullName = [NSString stringWithFormat:@"%@ %@", firstName, lastName];
         
         person.firstName = firstName;
         person.lastName = lastName;
@@ -144,7 +163,7 @@
             if (j == 0)
             {
                 person.homeEmail = email;
-                NSLog(@"person.homeEmail = %@ ", person.homeEmail);
+                NSLog(@"person.unique = %i ", person.uniqueID);
             }
             else if (j==1)
                 person.workEmail = email;
@@ -155,12 +174,10 @@
             NSData *imageData = (__bridge_transfer NSData *) ABPersonCopyImageDataWithFormat(contactPerson,kABPersonImageFormatThumbnail);
             person.profileImage = [UIImage imageWithData:imageData];
         }
-        
-        
+
         [self.tableData addObject:person];
     }
-    
-    
+
     CFRelease(addressBook);
 }
 - (void)didReceiveMemoryWarning
@@ -178,11 +195,47 @@
     {
         imageButton.selected = NO;
         [selectedContacts removeObject:indexPath];
+        
+        if ([selectedContacts count] == 0)
+        {
+            self.okButton.enabled = NO;
+        }
     }else
     {
         imageButton.selected = YES;
         [selectedContacts addObject:indexPath];
+        self.okButton.enabled = YES;
+    }
+}
 
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ([segue.identifier isEqualToString:@"selectiveContactsSegue"])
+    {
+        [personsToPass removeAllObjects];
+        for (NSIndexPath *indexPath in selectedContacts)
+        {
+            Person *aSelectedPerson = self.tableData[indexPath.row];
+            
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"SELF.uniqueID == %i", aSelectedPerson.uniqueID];
+            NSArray *arrayOfPersonsSaved = [PersonSelected findAllWithPredicate:predicate];
+            PersonSelected *dbPerson;
+        
+            NSLog(@"self.uniqueID = %i", aSelectedPerson.uniqueID);
+            if ([arrayOfPersonsSaved count] != 0)
+            {
+                dbPerson = [arrayOfPersonsSaved objectAtIndex:0];
+            }else
+            {
+                dbPerson = [PersonSelected createEntity];
+            }
+            
+            dbPerson.uniqueID = [NSNumber numberWithInteger:aSelectedPerson.uniqueID];
+            [personsToPass addObject:dbPerson];
+        }
+        
+        AppSelectViewController *appSelectVC = (AppSelectViewController *)segue.destinationViewController;
+        appSelectVC.selectedPersons = personsToPass;
     }
 }
 

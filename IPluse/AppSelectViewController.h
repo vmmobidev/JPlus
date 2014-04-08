@@ -10,4 +10,6 @@
 
 @interface AppSelectViewController : UIViewController <UICollectionViewDataSource, UICollectionViewDelegate>
 
+@property (strong, nonatomic) NSArray *selectedPersons;
+
 @end

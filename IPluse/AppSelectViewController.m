@@ -10,6 +10,9 @@
 #import "iHasApp.h"
 #import "UIImageView+WebCache.h"
 #import "DetectedApp.h"
+#import "ImageSaver.h"
+#import "AppDetails.h"
+#import "PersonSelected.h"
 
 @interface AppSelectViewController ()
 @property (weak, nonatomic) IBOutlet UICollectionView *collectionView;
@@ -22,6 +25,8 @@
 {
     NSMutableArray *selectedCells;
     iHasApp *detectionObject;
+    
+    NSArray *allInstalledApps;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -38,12 +43,40 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
-//    self.automaticallyAdjustsScrollViewInsets = NO;
+    UIImageView *titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"logo.png"]];
+    self.navigationItem.titleView = titleView;
+    
+    
+    if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"7.0"))
+    {
+        self.automaticallyAdjustsScrollViewInsets = NO;
+    }
     selectedCells = [[NSMutableArray alloc] init];
     self.collectionView.allowsMultipleSelection = YES;
     
     detectionObject = [[iHasApp alloc] init];
-    [self detectApps];
+    
+    allInstalledApps = [DetectedApp findAll];
+
+    if (![allInstalledApps count] > 0)
+    {
+        [self detectApps];
+    }
+
+    NSLog(@"Selected Persons No: %i", [self.selectedPersons count]);
+    
+    
+    NSArray *array = [PersonSelected findAll];
+    NSLog(@"person count = %i", [array count]);
+    
+    for (PersonSelected *personSel in array)
+    {
+        for (DetectedApp *aDetectedApp in personSel.selectedApps)
+        {
+            NSLog(@"app name  for person %@ is %@", personSel.uniqueID, aDetectedApp.name);
+        }
+    }
+
 }
 
 - (void)detectApps
@@ -64,16 +97,13 @@
         [newAppDictionaries addObjectsFromArray:appDictionaries];
         self.detectedApps = newAppDictionaries;
         
-        [self.collectionView reloadData];
     } withSuccess:^(NSArray *appDictionaries) {
         
         NSLog(@"Successful appDictionaries.count: %i", appDictionaries.count);
         self.detectedApps = appDictionaries;
-        [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-        [self.activityView stopAnimating];
-        [self.collectionView reloadData];
         
         [self saveDataOfApps];
+
     } withFailure:^(NSError *error) {
         
         NSLog(@"Error: %@", error.localizedDescription);
@@ -86,30 +116,23 @@
                                                   cancelButtonTitle:@"OK"
                                                   otherButtonTitles:nil];
         [alertView show];
-        [self.collectionView reloadData];
     }];
     
     self.detectedApps = nil;
     [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
-    [self.collectionView reloadData];
 }
 
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
+    SDImageCache *imageCache = [SDImageCache sharedImageCache];
+    [imageCache clearMemory];
+    [imageCache clearDisk];
+    [imageCache cleanDisk];
 }
 
-/*
-#pragma mark - Navigation
 
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
-{
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
 
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
 {
@@ -118,25 +141,27 @@
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
 {
-    return [self.detectedApps count];
+    allInstalledApps = [DetectedApp findAll];
+    return [allInstalledApps count];
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"Cell" forIndexPath:indexPath];
-    NSDictionary *appDictionary = [self.detectedApps objectAtIndex:indexPath.row];
-    NSString *trackName = [appDictionary objectForKey:@"trackName"];
     
-    NSString *iconUrlString = [appDictionary objectForKey:@"artworkUrl512"];
-    NSArray *iconUrlComponents = [iconUrlString componentsSeparatedByString:@"."];
-    NSMutableArray *mutableIconURLComponents = [[NSMutableArray alloc] initWithArray:iconUrlComponents];
-    [mutableIconURLComponents insertObject:@"128x128-75" atIndex:mutableIconURLComponents.count-1];
-    iconUrlString = [mutableIconURLComponents componentsJoinedByString:@"."];
+    DetectedApp *aDetectedApp = [allInstalledApps objectAtIndex:indexPath.row];
     
     UIImageView *innerImageView = (UIImageView *)[cell viewWithTag:100];
-    [innerImageView setImageWithURL:[NSURL URLWithString:iconUrlString] placeholderImage:nil];
-    
-    
+    if (aDetectedApp.imagePath.length != 0)
+    {
+        NSData *imageData = [NSData dataWithContentsOfFile:aDetectedApp.imagePath];
+                             
+        innerImageView.image = [UIImage imageWithData:imageData];
+    }else
+    {
+        NSLog(@"No image path was stored");
+    }
+
     UIImageView *outerImageView = (UIImageView *)[cell viewWithTag:101];
 
     if ([selectedCells containsObject:indexPath])
@@ -149,9 +174,6 @@
         innerImageView.alpha = .3;
         outerImageView.alpha = 0;
     }
-
-//    outerImageView.backgroundColor = [UIColor lightGrayColor];
-    
     return cell;
 }
 
@@ -184,9 +206,90 @@
 
 - (void)saveDataOfApps
 {
-    for (NSDictionary *appDetails in self.detectedApps)
+    for (NSDictionary *appDetailsDict in self.detectedApps)
     {
-        <#statements#>
+        AppDetails *appsDetail = [[AppDetails alloc] init];
+        appsDetail.appName = appDetailsDict[@"trackName"];
+        appsDetail.appID = appDetailsDict[@"trackId"];
+        
+        NSString *iconUrlString = [appDetailsDict objectForKey:@"artworkUrl512"];
+        NSArray *iconUrlComponents = [iconUrlString componentsSeparatedByString:@"."];
+        NSMutableArray *mutableIconURLComponents = [[NSMutableArray alloc] initWithArray:iconUrlComponents];
+        [mutableIconURLComponents insertObject:@"128x128-75" atIndex:mutableIconURLComponents.count-1];
+        iconUrlString = [mutableIconURLComponents componentsJoinedByString:@"."];
+        
+        [[SDWebImageDownloader sharedDownloader]  downloadImageWithURL:[NSURL URLWithString:iconUrlString] options:0 progress:^(NSInteger receivedSize, NSInteger expectedSize) {
+            
+        } completed:^(UIImage *image, NSData *data, NSError *error, BOOL finished) {
+           
+            if (image && finished)
+            {
+                appsDetail.imagePath = [ImageSaver saveImageToDisk:image forAppID:appsDetail.appID];
+                
+                dispatch_async(dispatch_get_main_queue() , ^{
+                    [self saveAppDetails:appsDetail];
+                    
+                    if (self.activityView.isAnimating) {
+                        [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+                        [self.activityView stopAnimating];
+                    }
+
+                });
+            }
+        }];
+    }
+}
+
+- (void)saveAppDetails:(AppDetails *)appDetails
+{
+    DetectedApp *detectedApp = [DetectedApp createEntity];
+    
+    detectedApp.name = appDetails.appName;
+    detectedApp.appID = appDetails.appID;
+    detectedApp.imagePath = appDetails.imagePath;
+    
+    [[NSManagedObjectContext defaultContext] saveToPersistentStoreWithCompletion:^(BOOL success, NSError *error) {
+        if (success)
+        {
+            NSLog(@"Successed in %@", appDetails.appName);
+            [self.collectionView reloadData];
+        } else
+        {
+            NSLog(@"Failed to save In %@", appDetails.appName);
+            [self.collectionView reloadData];
+        }
+    }];
+}
+- (IBAction)refreshButtonPressed:(id)sender
+{
+    [self refreshAppList];
+}
+
+- (void)refreshAppList
+{
+    [self detectApps];
+    NSArray *appsToDelete = [DetectedApp findAll];
+    for (DetectedApp *aDetectedApp in appsToDelete)
+    {
+        [ImageSaver deleteImageAtPath:aDetectedApp.imagePath];
+    }
+    [DetectedApp truncateAll];
+    [[NSManagedObjectContext defaultContext] saveToPersistentStoreAndWait];
+}
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ([segue.identifier isEqualToString:@"successfulSetUpSegue"])
+    {
+        NSArray *arrayOfAppDetails = [DetectedApp findAll];
+        for (PersonSelected *aSelectedPerson in self.selectedPersons)
+        {
+            for (NSIndexPath *indexPath in selectedCells)
+            {
+                [aSelectedPerson addSelectedAppsObject:arrayOfAppDetails[indexPath.row]];
+            }
+        }
+        [[NSManagedObjectContext defaultContext] saveToPersistentStoreAndWait];
     }
 }
 
